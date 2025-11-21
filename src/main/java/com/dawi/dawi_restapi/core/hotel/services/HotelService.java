@@ -32,4 +32,7 @@ public class HotelService {
         hotelRepository.deleteById(id);
     }
 
+    public List<Hotel> listarTodosLosDepartamentos() {
+        return hotelRepository.findAll();
+    }
 }

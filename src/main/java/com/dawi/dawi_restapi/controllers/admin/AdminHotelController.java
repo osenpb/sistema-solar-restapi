@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/admin/hoteles")
 @RequiredArgsConstructor
@@ -18,7 +20,14 @@ public class AdminHotelController {
     private final HabitacionService habitacionService;
 
     @GetMapping
-    public ResponseEntity<?> listarPorDepartamento(@RequestParam Long depId) {
+    public ResponseEntity<List<Hotel>> obtenerTodosLosHoteles() {
+        List<Hotel> hoteles = hotelService.listarTodosLosDepartamentos();
+        return ResponseEntity.ok(hoteles);
+
+    }
+
+    @GetMapping("departamento/{id}")
+    public ResponseEntity<?> listarPorDepartamento(@PathVariable("id") Long depId) { // antes estaba con RequestParam
         return ResponseEntity.ok(hotelService.listarPorDepartamentoId(depId));
     }
 
@@ -50,4 +59,6 @@ public class AdminHotelController {
     public ResponseEntity<?> hotelesPorDepartamento(@PathVariable Long id) {
         return ResponseEntity.ok(hotelService.listarPorDepartamentoId(id));
     }
+
+
 }

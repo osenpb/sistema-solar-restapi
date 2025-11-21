@@ -26,7 +26,7 @@ public class Hotel {
 
     @ManyToOne
     @JoinColumn(name = "departamento_id")
-    @JsonIgnore
+    //@JsonIgnore
     private Departamento departamento;
 
     @OneToMany(mappedBy = "hotel", cascade = CascadeType.ALL,orphanRemoval = true)
