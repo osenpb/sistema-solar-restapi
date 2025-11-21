@@ -56,7 +56,6 @@ public class AuthController {
         } catch (BadCredentialsException e) {
             throw new BadCredentialsException("No existe el usuario {}", e);
         }
-
     }
 
     @GetMapping("/saludo")

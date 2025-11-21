@@ -14,15 +14,21 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create
     show-sql: true
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
+    defer-datasource-initialization: true   # para inyectar datos al comienzo del arranque
+
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8
 
 application:
   security:
     jwt:
       secret-key: 9a8b7c6d5e4f3g2h1i0j9k8l7m6n5o4p3q2r1s0t
-      expiration: 30 # en la config serán 30 minutos
+      expiration: 30
       refresh-expiration: 300
