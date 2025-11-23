@@ -31,14 +31,14 @@ public class HotelService {
                 .orElseThrow(() -> new RuntimeException("Departamento no existe"));
 
         Hotel hotel = new Hotel();
+        hotel.setId(null);
         hotel.setNombre(hotelRequest.nombre());
         hotel.setDireccion(hotelRequest.direccion());
         hotel.setDepartamento(departamento);
 
         return hotelRepository.save(hotel);
     }
-
-    // ESTE METODO SE MEJORA LUEGO
+    // ARREGLAR, PROBLEMA DE LOGICA CREO
     public Hotel actualizar(HotelRequest hotelRequest) {
 
         Departamento departamento = departamentoService
@@ -46,6 +46,7 @@ public class HotelService {
                 .orElseThrow(() -> new RuntimeException("Departamento no existe"));
 
         Hotel hotel = new Hotel();
+
         hotel.setNombre(hotelRequest.nombre());
         hotel.setDireccion(hotelRequest.direccion());
         hotel.setDepartamento(departamento);
