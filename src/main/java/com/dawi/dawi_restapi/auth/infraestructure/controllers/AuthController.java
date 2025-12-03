@@ -31,9 +31,21 @@ public class AuthController {
 
 
     @PostMapping("/register")
-    public ResponseEntity<?> createUser(@RequestBody RegisterRequest createUserDto) {
+    public ResponseEntity<AuthResponse> createUser(@RequestBody RegisterRequest createUserDto) {
+        // 1. Crear el usuario
         authService.createUser(createUserDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body("Usuario creado :)");
+
+        // 2. Hacer login automático para obtener token
+        LoginRequest loginRequest = new LoginRequest(createUserDto.email(), createUserDto.password());
+        Map<String, String> token = authService.login(loginRequest);
+
+        // 3. Obtener usuario creado
+        User user = userService.findByEmail(createUserDto.email()).orElseThrow();
+        UserResponse userResponseDTO = AuthMapper.toDto(user);
+
+        // 4. Devolver AuthResponse con token (igual que login)
+        AuthResponse authResponse = new AuthResponse(userResponseDTO, token.get("access-token"));
+        return ResponseEntity.status(HttpStatus.CREATED).body(authResponse);
     }
 
     @PostMapping("/login")
@@ -55,6 +67,27 @@ public class AuthController {
     @GetMapping("/saludo")
     public ResponseEntity<?> saludo() {
         return ResponseEntity.ok("hola");
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserResponse> getCurrentUser(@RequestHeader("Authorization") String authHeader) {
+        try {
+            // Extraer token del header "Bearer <token>"
+            String token = authHeader.replace("Bearer ", "");
+
+            // Obtener email del token
+            String email = authService.getUserFromToken(token);
+
+            // Buscar usuario
+            User user = userService.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+            UserResponse userResponse = AuthMapper.toDto(user);
+            return ResponseEntity.ok(userResponse);
+        } catch (Exception e) {
+            log.error("Error obteniendo usuario actual: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
     }
 
 }

@@ -31,8 +31,9 @@ public class HotelService {
     private final TipoHabitacionService tipoHabitacionService;
     private final HabitacionService habitacionService;
 
-    public List<Hotel> listarPorDepartamentoId(Long departamentoId) {
-        return hotelRepository.findByDepartamentoId(departamentoId);
+    public List<HotelResponse> listarPorDepartamentoId(Long departamentoId) {
+        List<Hotel> hoteles = hotelRepository.findByDepartamentoId(departamentoId);
+        return hoteles.stream().map(HotelMapper::toDTO).toList();
     }
 
     public Hotel guardar(HotelRequest hotelRequest) {

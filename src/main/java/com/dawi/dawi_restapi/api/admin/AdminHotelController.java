@@ -29,7 +29,7 @@ public class AdminHotelController {
     }
 
     @GetMapping("departamento/{id}")
-    public ResponseEntity<?> listarPorDepartamento(@PathVariable("id") Long depId) { // antes estaba con RequestParam
+    public ResponseEntity<List<HotelResponse>> listarPorDepartamento(@PathVariable("id") Long depId) {
         return ResponseEntity.ok(hotelService.listarPorDepartamentoId(depId));
     }
 
@@ -60,7 +60,7 @@ public class AdminHotelController {
     }
 
     @GetMapping("/por-departamento/{id}")
-    public ResponseEntity<?> hotelesPorDepartamento(@PathVariable Long id) {
+    public ResponseEntity<List<HotelResponse>> hotelesPorDepartamento(@PathVariable Long id) {
         return ResponseEntity.ok(hotelService.listarPorDepartamentoId(id));
     }
 

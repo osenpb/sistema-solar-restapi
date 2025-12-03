@@ -1,19 +1,14 @@
----- Insertar roles básicos
---INSERT INTO rol (nombre) VALUES ('ADMIN'), ('USER');
---
----- Insertar usuario: admin@hotel.com por defecto
----- Password: admin123 (encriptado con BCrypt)
---INSERT INTO usuario (nombre, email, password, telefono, rol_id)
---VALUES (
---  'Administrador',
---  'admin@hotel.com',
---  '$2a$10$d.kGpvEYwTFXZ/MdzFrplORvJ7q3oS/lQIYfYuJ2HPzQZqt.1Sfk6',
---  '999999999',
---  1
---);
+---- =============================================
+---- OSWALDO, ANTES DE REGISTRARTE INSERTA AL ADMIN, Y
+----- Y TOODO SCRIPT QUE TENES ACA, LA CLAVE DEL ADMIN HA ESTA HARCODEADA
+----- TAL VEZ DUERMA HASTA TARDE XD NO TE RINDAS HERMNO
+---- =============================================
 
-
--- DATOS PARA LAS PRUEBAS
+-- Admin (password: admin123)
+--INSERT INTO users (id, username, email, password, role_id, telefono, activo, fecha_creacion)
+--VALUES (1, 'Administrador', 'admin@hoteles.com',
+--'$2a$12$rEQanJSFNeDlUU1yhbUNcuuMvgJuB87TiCB6QCvBGtLRGL39mQ0Ia',
+--1, '999999999', TRUE, NOW());
 
 insert into departamento (id,nombre,detalle)
 values (1,'Lima','La capital del peru'),

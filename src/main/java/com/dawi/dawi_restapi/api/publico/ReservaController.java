@@ -56,7 +56,7 @@ public class ReservaController {
     @GetMapping("/hoteles")
     public ResponseEntity<?> verHoteles(@RequestParam Long depId) {
         Optional<Departamento> departamento = departamentoService.buscarPorId(depId);
-        List<Hotel> hoteles = hotelService.listarPorDepartamentoId(depId);
+        List<HotelResponse> hoteles = hotelService.listarPorDepartamentoId(depId);
 
         return ResponseEntity.ok(Map.of(
                 "departamento", departamento.orElse(null),
