@@ -43,10 +43,40 @@ public class ClienteService {
     }
 
     /**
-     * Crea un nuevo cliente o actualiza uno existente basándose en el DNI.
-     * Si el usuario está autenticado, vincula el cliente con el usuario.
+     * Crea un nuevo cliente o actualiza uno existente.
+     * Si el usuario está autenticado, busca por userId (cada usuario tiene su propio cliente).
+     * Si no está autenticado, busca por DNI (comportamiento legacy).
      */
     public Cliente crearOActualizar(ClienteRequest dto, User user) {
+        // Si hay usuario autenticado, buscar cliente por userId
+        if (user != null) {
+            Optional<Cliente> clienteDelUsuario = clienteRepository.findByUserId(user.getId());
+
+            if (clienteDelUsuario.isPresent()) {
+                // Actualizar datos del cliente existente del usuario
+                Cliente cliente = clienteDelUsuario.get();
+                cliente.setNombre(dto.nombre());
+                cliente.setApellido(dto.apellido());
+                cliente.setDni(dto.dni());
+                cliente.setEmail(dto.email());
+                if (dto.telefono() != null && !dto.telefono().isBlank()) {
+                    cliente.setTelefono(dto.telefono());
+                }
+                return clienteRepository.save(cliente);
+            } else {
+                // Crear nuevo cliente para este usuario
+                Cliente nuevo = new Cliente();
+                nuevo.setNombre(dto.nombre());
+                nuevo.setApellido(dto.apellido());
+                nuevo.setDni(dto.dni());
+                nuevo.setEmail(dto.email());
+                nuevo.setTelefono(dto.telefono() != null && !dto.telefono().isBlank() ? dto.telefono() : "");
+                nuevo.setUser(user);
+                return clienteRepository.save(nuevo);
+            }
+        }
+
+        // Sin usuario autenticado: comportamiento legacy por DNI
         Optional<Cliente> existente = clienteRepository.findByDni(dto.dni());
 
         if (existente.isPresent()) {
@@ -57,10 +87,6 @@ public class ClienteService {
             if (dto.telefono() != null && !dto.telefono().isBlank()) {
                 cliente.setTelefono(dto.telefono());
             }
-            // Vincular con usuario si no está vinculado
-            if (user != null && cliente.getUser() == null) {
-                cliente.setUser(user);
-            }
             return clienteRepository.save(cliente);
         }
 
@@ -70,9 +96,6 @@ public class ClienteService {
         nuevo.setDni(dto.dni());
         nuevo.setEmail(dto.email());
         nuevo.setTelefono(dto.telefono() != null && !dto.telefono().isBlank() ? dto.telefono() : "");
-        if (user != null) {
-            nuevo.setUser(user);
-        }
         return clienteRepository.save(nuevo);
     }
 

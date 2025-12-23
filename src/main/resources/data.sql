@@ -1,5 +1,5 @@
-create database dawiapp;
-use dawiapp;
+--create database dawiapp;
+--use dawiapp;
 
 -- =====================================================
 -- SCRIPT DE BASE DE DATOS - SISTEMA DE RESERVAS HOTEL
@@ -10,15 +10,21 @@ use dawiapp;
 -- =====================================================
 
 -- Roles del sistema
-INSERT INTO roles (role_id, rolename) VALUES (1, 'ADMIN') ON DUPLICATE KEY UPDATE rolename = 'ADMIN';
-INSERT INTO roles (role_id, rolename) VALUES (2, 'USER') ON DUPLICATE KEY UPDATE rolename = 'USER';
+INSERT INTO roles (role_id, rolename) VALUES (1, 'ADMIN');
+INSERT INTO roles (role_id, rolename) VALUES (2, 'USER');
 
 -- Admin (password: admin123)
 INSERT INTO users (id, username, email, password, role_id, telefono, activo, fecha_creacion)
-VALUES (1, 'Administrador', 'admin@hotel.com',
-'$2a$12$LhRqC4i8zzzS6QkVP.KtduVbOVeRjcYoi30Aq14J6V1ixfPbPaTre',
-1, '999999999', TRUE, NOW())
-ON DUPLICATE KEY UPDATE username = 'Administrador';
+VALUES (
+    1,
+    'Administrador',
+    'admin@hotel.com',
+    '$2a$12$LhRqC4i8zzzS6QkVP.KtduVbOVeRjcYoi30Aq14J6V1ixfPbPaTre',
+    1,
+    '999999999',
+    TRUE,
+    NOW()
+);
 
 -- =====================================================
 -- DEPARTAMENTOS
