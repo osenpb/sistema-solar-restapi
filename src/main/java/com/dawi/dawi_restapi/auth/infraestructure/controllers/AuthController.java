@@ -9,12 +9,14 @@ import com.dawi.dawi_restapi.auth.infraestructure.dtos.AuthResponse;
 import com.dawi.dawi_restapi.auth.infraestructure.dtos.LoginRequest;
 import com.dawi.dawi_restapi.auth.infraestructure.dtos.RegisterRequest;
 import com.dawi.dawi_restapi.auth.infraestructure.dtos.UserResponse;
+import com.dawi.dawi_restapi.helpers.exceptions.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -70,24 +72,15 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<UserResponse> getCurrentUser(@RequestHeader("Authorization") String authHeader) {
-        try {
-            // Extraer token del header "Bearer <token>"
-            String token = authHeader.replace("Bearer ", "");
+    public ResponseEntity<UserResponse> getCurrentUser(@AuthenticationPrincipal User user) {
 
-            // Obtener email del token
-            String email = authService.getUserFromToken(token);
 
-            // Buscar usuario
-            User user = userService.findByEmail(email)
-                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+            User myUser = userService.findByEmail(user.getEmail())
+                    .orElseThrow(() -> new EntityNotFoundException("User not found with user {}", user.getEmail() ));
 
             UserResponse userResponse = AuthMapper.toDto(user);
             return ResponseEntity.ok(userResponse);
-        } catch (Exception e) {
-            log.error("Error obteniendo usuario actual: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+
     }
 
 }

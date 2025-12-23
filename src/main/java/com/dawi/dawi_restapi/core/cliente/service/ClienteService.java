@@ -1,11 +1,14 @@
 package com.dawi.dawi_restapi.core.cliente.service;
 
+import com.dawi.dawi_restapi.auth.domain.models.User;
 import com.dawi.dawi_restapi.core.cliente.dtos.ClienteRequest;
 import com.dawi.dawi_restapi.core.cliente.model.Cliente;
 import com.dawi.dawi_restapi.core.cliente.repository.ClienteRepository;
-import jakarta.validation.constraints.NotBlank;
+import com.dawi.dawi_restapi.helpers.exceptions.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -18,7 +21,65 @@ public class ClienteService {
     }
 
     public Cliente buscarPorDni(String dni) {
-        return clienteRepository.findByDni(dni).orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
+        return clienteRepository.findByDni(dni)
+                .orElseThrow(() -> new EntityNotFoundException("Cliente", dni));
     }
 
+    public Optional<Cliente> buscarPorDniOptional(String dni) {
+        return clienteRepository.findByDni(dni);
+    }
+
+    public Cliente buscarPorId(Long id) {
+        return clienteRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Cliente", id));
+    }
+
+    public Optional<Cliente> buscarPorUserId(Long userId) {
+        return clienteRepository.findByUserId(userId);
+    }
+
+    public Optional<Cliente> buscarPorEmail(String email) {
+        return clienteRepository.findByEmail(email);
+    }
+
+    /**
+     * Crea un nuevo cliente o actualiza uno existente basándose en el DNI.
+     * Si el usuario está autenticado, vincula el cliente con el usuario.
+     */
+    public Cliente crearOActualizar(ClienteRequest dto, User user) {
+        Optional<Cliente> existente = clienteRepository.findByDni(dto.dni());
+
+        if (existente.isPresent()) {
+            Cliente cliente = existente.get();
+            cliente.setNombre(dto.nombre());
+            cliente.setApellido(dto.apellido());
+            cliente.setEmail(dto.email());
+            if (dto.telefono() != null && !dto.telefono().isBlank()) {
+                cliente.setTelefono(dto.telefono());
+            }
+            // Vincular con usuario si no está vinculado
+            if (user != null && cliente.getUser() == null) {
+                cliente.setUser(user);
+            }
+            return clienteRepository.save(cliente);
+        }
+
+        Cliente nuevo = new Cliente();
+        nuevo.setNombre(dto.nombre());
+        nuevo.setApellido(dto.apellido());
+        nuevo.setDni(dto.dni());
+        nuevo.setEmail(dto.email());
+        nuevo.setTelefono(dto.telefono() != null && !dto.telefono().isBlank() ? dto.telefono() : "");
+        if (user != null) {
+            nuevo.setUser(user);
+        }
+        return clienteRepository.save(nuevo);
+    }
+
+    /**
+     * Crea un nuevo cliente o actualiza uno existente basándose en el DNI.
+     */
+    public Cliente crearOActualizar(ClienteRequest dto) {
+        return crearOActualizar(dto, null);
+    }
 }

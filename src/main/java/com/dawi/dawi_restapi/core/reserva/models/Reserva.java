@@ -45,5 +45,4 @@ public class Reserva {
         this.detalles.add(detalle);
     }
 
-
 }

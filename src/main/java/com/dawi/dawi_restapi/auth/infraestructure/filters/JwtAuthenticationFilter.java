@@ -27,7 +27,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.authService = authService;
         this.userDetailsService = userDetailsService;
     }
-    // no he usado el required args construct para q se note que esta clase tiene el constructor explicito
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,

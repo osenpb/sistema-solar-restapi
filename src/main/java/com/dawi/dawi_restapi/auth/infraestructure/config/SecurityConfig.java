@@ -23,7 +23,6 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CorsConfigurationSource corsConfigurationSource;
 
-    String API_VERSION = "/api/v1";
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -33,32 +32,15 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll()
-                );
-
-
-        // .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers("/api/public/**").permitAll()
+                        .requestMatchers("/api/public/reserva/mis-reservas").authenticated()
+                        .anyRequest().authenticated()
+                ).addFilterBefore(jwtAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class);;
 
         return http.build();
     }
-
-//    @Bean
-//    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-//        http
-//                .cors(cors -> cors.configurationSource(corsConfigurationSource))
-//                .csrf(AbstractHttpConfigurer::disable)
-//                .sessionManagement(session -> session
-//                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // no se generara una cookie que guarde la info
-//                .authorizeHttpRequests(auth -> auth
-//                        .requestMatchers(String.format("%s/auth/**", API_VERSION)).permitAll()
-//                        .requestMatchers(String.format("%s/admin/**", API_VERSION)).permitAll() // luego cambio permisos x rol
-//                        .requestMatchers(String.format("%s/users/**", API_VERSION)).permitAll() // luego cambio permisos x rol
-//                        .anyRequest().authenticated()
-//                )//registra el filtro ANTES del de login por formulario
-////                .oauth2Login(Customizer.withDefaults()) // para registro OAuth2
-//                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-//        return http.build();
-//    }
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {

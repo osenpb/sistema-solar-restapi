@@ -1,23 +1,21 @@
 package com.dawi.dawi_restapi.core.reserva.services;
 
-import com.dawi.dawi_restapi.core.cliente.dtos.ClienteRequest;
-import com.dawi.dawi_restapi.core.cliente.dtos.ClienteResponse;
+import com.dawi.dawi_restapi.auth.domain.models.User;
 import com.dawi.dawi_restapi.core.cliente.model.Cliente;
-import com.dawi.dawi_restapi.core.cliente.repository.ClienteRepository;
 import com.dawi.dawi_restapi.core.cliente.service.ClienteService;
 import com.dawi.dawi_restapi.core.detalle_reserva.model.DetalleReserva;
 import com.dawi.dawi_restapi.core.habitacion.models.Habitacion;
-import com.dawi.dawi_restapi.core.habitacion.repository.HabitacionRepository;
-import com.dawi.dawi_restapi.core.hotel.dtos.HotelResponse;
+import com.dawi.dawi_restapi.core.habitacion.service.HabitacionService;
 import com.dawi.dawi_restapi.core.hotel.model.Hotel;
-import com.dawi.dawi_restapi.core.hotel.repositories.HotelRepository;
 import com.dawi.dawi_restapi.core.hotel.services.HotelService;
+import com.dawi.dawi_restapi.core.reserva.dtos.ReservaAdminUpdateDTO;
 import com.dawi.dawi_restapi.core.reserva.dtos.ReservaRequest;
-import com.dawi.dawi_restapi.core.reserva.dtos.ReservaResponse;
 import com.dawi.dawi_restapi.core.reserva.models.Reserva;
 import com.dawi.dawi_restapi.core.reserva.repositories.ReservaRepository;
-import com.dawi.dawi_restapi.helpers.mappers.ClienteMapper;
-import com.dawi.dawi_restapi.helpers.mappers.ReservaMapper;
+import com.dawi.dawi_restapi.helpers.exceptions.BusinessException;
+import com.dawi.dawi_restapi.helpers.exceptions.ConflictException;
+import com.dawi.dawi_restapi.helpers.exceptions.EntityNotFoundException;
+import com.dawi.dawi_restapi.helpers.exceptions.ValidationException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,28 +23,17 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class ReservaService {
 
     private final ReservaRepository reservaRepository;
-
     private final ClienteService clienteService;
-
-    private final ClienteRepository clienteRepository;
-
     private final HotelService hotelService;
+    private final HabitacionService habitacionService;
 
-    private final HotelRepository hotelRepository;
-
-    private final HabitacionRepository habitacionRepository;
-
-
-    public Reserva guardar(Reserva reserva) {
-        return reservaRepository.save(reserva);
-    }
+    // ==================== CONSULTAS ====================
 
     public List<Reserva> listar() {
         return reservaRepository.findAll();
@@ -56,26 +43,47 @@ public class ReservaService {
         return reservaRepository.findAll();
     }
 
-    public Optional<Reserva> buscarPorId(Long id) {
-        return reservaRepository.findById(id);
+    public Reserva buscarPorId(Long id) {
+        return reservaRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Reserva", id));
     }
 
-    public void eliminar(Long id) {
-        reservaRepository.deleteById(id);
-    }
-
-    public List<Reserva> buscarReservasPorDniCliente(String dni){
+    public List<Reserva> buscarReservasPorDniCliente(String dni) {
         return reservaRepository.findByClienteDni(dni);
     }
 
+    public List<Reserva> buscarReservasPorUsuarioId(Long userId) {
+        return reservaRepository.findByUsuarioId(userId);
+    }
+
+    // ==================== OPERACIONES CRUD ====================
+
+    public Reserva guardar(Reserva reserva) {
+        return reservaRepository.save(reserva);
+    }
+
     @Transactional
-    public Reserva reservarHabitaciones(Long hotelId, ReservaRequest dto) {
+    public void eliminar(Long id) {
+        if (!reservaRepository.existsById(id)) {
+            throw new EntityNotFoundException("Reserva", id);
+        }
+        reservaRepository.deleteById(id);
+    }
 
-        // 1. Obtener hotel como ENTIDAD
-        Hotel hotel = hotelRepository.findById(hotelId)
-                .orElseThrow(() -> new RuntimeException("Hotel no encontrado"));
+    // ==================== CREAR RESERVA ====================
 
-        // 2. Validar y obtener habitaciones
+    @Transactional
+    public Reserva reservarHabitaciones(Long hotelId, ReservaRequest dto, User user) {
+        // 1. Validar request
+        validarReservaRequest(dto);
+
+        // 2. Obtener hotel
+        Hotel hotel = hotelService.buscarPorId(hotelId);
+
+        // 3. Validar fechas
+        validarFechas(dto.fechaInicio(), dto.fechaFin());
+
+        // 4. Validar y obtener habitaciones
         List<Habitacion> habitaciones = validarYObtenerHabitaciones(
                 hotel,
                 dto.habitacionesIds(),
@@ -83,14 +91,14 @@ public class ReservaService {
                 dto.fechaFin()
         );
 
-        // 3. Crear o reutilizar cliente
-        Cliente cliente = this.crearOCrearCliente(dto.cliente());
+        // 5. Crear o actualizar cliente (vinculando con usuario si existe)
+        Cliente cliente = clienteService.crearOActualizar(dto.cliente(), user);
 
-        // 4. Calcular total
+        // 6. Calcular total
         long noches = ChronoUnit.DAYS.between(dto.fechaInicio(), dto.fechaFin());
         double total = calcularTotal(habitaciones, noches);
 
-        // 5. Crear la reserva
+        // 7. Crear la reserva con estado PENDIENTE (se confirma al pagar)
         Reserva reserva = new Reserva();
         reserva.setFechaReserva(LocalDate.now());
         reserva.setFechaInicio(dto.fechaInicio());
@@ -98,9 +106,9 @@ public class ReservaService {
         reserva.setCliente(cliente);
         reserva.setHotel(hotel);
         reserva.setTotal(total);
-        reserva.setEstado("CONFIRMADA");
+        reserva.setEstado("PENDIENTE");
 
-        // 6. Crear detalles
+        // 8. Crear detalles
         for (Habitacion hab : habitaciones) {
             DetalleReserva det = new DetalleReserva();
             det.setHabitacion(hab);
@@ -108,44 +116,87 @@ public class ReservaService {
             reserva.addDetalle(det);
         }
 
-        // 7. Guardar (cascade salvará los detalles)
+        // 9. Guardar
         return reservaRepository.save(reserva);
     }
 
-
-    private Cliente crearOCrearCliente(ClienteRequest dto) {
-        // Buscar cliente existente por DNI
-        Optional<Cliente> existente = clienteRepository.findByDni(dto.dni());
-
-        if (existente.isPresent()) {
-            // Actualizar datos del cliente existente si es necesario
-            Cliente cliente = existente.get();
-            cliente.setNombre(dto.nombre());
-            cliente.setApellido(dto.apellido());
-            cliente.setEmail(dto.email());
-            if (dto.telefono() != null && !dto.telefono().isBlank()) {
-                cliente.setTelefono(dto.telefono());
-            }
-            return clienteRepository.save(cliente);
-        }
-
-        // Crear nuevo cliente
-        Cliente nuevo = new Cliente();
-        nuevo.setNombre(dto.nombre());
-        nuevo.setApellido(dto.apellido());
-        nuevo.setDni(dto.dni());
-        nuevo.setEmail(dto.email());
-        nuevo.setTelefono(dto.telefono() != null && !dto.telefono().isBlank() ? dto.telefono() : "");
-        return clienteRepository.save(nuevo);
+    @Transactional
+    public Reserva reservarHabitaciones(Long hotelId, ReservaRequest dto) {
+        return reservarHabitaciones(hotelId, dto, null);
     }
 
+    // ==================== ACTUALIZAR RESERVA (ADMIN) ====================
 
+    @Transactional
+    public Reserva actualizarReservaAdmin(Long id, ReservaAdminUpdateDTO dto) {
+        Reserva reserva = buscarPorId(id);
 
-    // Métodos privados: validarFechas, validarYObtenerHabitaciones, calcularTotal, crearReserva... para mantener el flujo principal limpio
-    private double calcularTotal(List<Habitacion> habitaciones, long noches) {
-        return habitaciones.stream()
-                .mapToDouble(h -> h.getPrecio() * noches)
-                .sum();
+        // Validar fechas
+        validarFechas(dto.fechaInicio(), dto.fechaFin());
+
+        // Actualizar fechas y estado
+        reserva.setFechaInicio(dto.fechaInicio());
+        reserva.setFechaFin(dto.fechaFin());
+        reserva.setEstado(dto.estado());
+
+        // Actualizar hotel si cambió
+        if (dto.hotelId() != null && !dto.hotelId().equals(reserva.getHotel().getId())) {
+            Hotel nuevoHotel = hotelService.buscarPorId(dto.hotelId());
+            reserva.setHotel(nuevoHotel);
+        }
+
+        // Actualizar cliente
+        Cliente cliente = reserva.getCliente();
+        cliente.setNombre(dto.cliente().nombre());
+        cliente.setApellido(dto.cliente().apellido());
+        cliente.setEmail(dto.cliente().email());
+        cliente.setDni(dto.cliente().dni());
+        if (dto.cliente().telefono() != null) {
+            cliente.setTelefono(dto.cliente().telefono());
+        }
+        clienteService.guardar(cliente);
+
+        // Actualizar habitaciones
+        actualizarHabitacionesReserva(reserva, dto);
+
+        return reservaRepository.save(reserva);
+    }
+
+    // ==================== MÉTODOS PRIVADOS DE VALIDACIÓN ====================
+
+    private void validarReservaRequest(ReservaRequest dto) {
+        if (dto.fechaInicio() == null) {
+            throw new ValidationException("fechaInicio", "La fecha de inicio es requerida");
+        }
+        if (dto.fechaFin() == null) {
+            throw new ValidationException("fechaFin", "La fecha de fin es requerida");
+        }
+        if (dto.habitacionesIds() == null || dto.habitacionesIds().isEmpty()) {
+            throw new ValidationException("habitacionesIds", "Debe seleccionar al menos una habitación");
+        }
+        if (dto.cliente() == null) {
+            throw new ValidationException("cliente", "Los datos del cliente son requeridos");
+        }
+    }
+
+    private void validarFechas(LocalDate fechaInicio, LocalDate fechaFin) {
+        LocalDate hoy = LocalDate.now();
+        LocalDate maniana = hoy.plusDays(1);
+
+        // Validar que la fecha de inicio sea al menos mañana (24 horas de anticipación)
+        if (fechaInicio.isBefore(maniana)) {
+            throw new BusinessException(
+                    "Las reservas deben realizarse con al menos 24 horas de anticipación. La fecha mínima de check-in es: " + maniana,
+                    "FECHA_MINIMA_24_HORAS"
+            );
+        }
+
+        if (fechaFin.isBefore(fechaInicio) || fechaFin.isEqual(fechaInicio)) {
+            throw new BusinessException(
+                    "La fecha de salida debe ser posterior a la fecha de entrada",
+                    "FECHA_FIN_INVALIDA"
+            );
+        }
     }
 
     private List<Habitacion> validarYObtenerHabitaciones(
@@ -154,31 +205,142 @@ public class ReservaService {
             LocalDate inicio,
             LocalDate fin) {
 
-        if (habitacionesIds == null || habitacionesIds.isEmpty()) {
-            throw new RuntimeException("Debe seleccionar al menos una habitación.");
-        }
+        List<Habitacion> habitaciones = habitacionService.buscarPorIds(habitacionesIds);
 
-        List<Habitacion> habitaciones = habitacionRepository.findAllById(habitacionesIds);
-
+        // Verificar que todas las habitaciones existan
         if (habitaciones.size() != habitacionesIds.size()) {
-            throw new RuntimeException("Una o más habitaciones no existen.");
+            List<Long> encontrados = habitaciones.stream().map(Habitacion::getId).toList();
+            List<Long> noEncontrados = habitacionesIds.stream()
+                    .filter(id -> !encontrados.contains(id))
+                    .toList();
+            throw new EntityNotFoundException(
+                    "Una o más habitaciones no fueron encontradas: " + noEncontrados
+            );
         }
 
         // Validar que pertenecen al hotel
         for (Habitacion h : habitaciones) {
             if (!h.getHotel().getId().equals(hotel.getId())) {
-                throw new RuntimeException("La habitación " + h.getId() + " no pertenece al hotel " + hotel.getNombre());
+                throw new BusinessException(
+                        String.format("La habitación %d no pertenece al hotel '%s'",
+                                h.getId(), hotel.getNombre()),
+                        "HABITACION_HOTEL_INCORRECTO"
+                );
             }
         }
 
-//         Validar disponibilidad
-//    for (Habitacion h : habitaciones) {
-//        boolean ocupada = reservaRepository.existeReservaParaHabitacion(h.getId(), inicio, fin);
-//        if (ocupada) {
-//            throw new RuntimeException("La habitación " + h.getId() + " no está disponible.");
-//        }
-//    }
+        // Validar disponibilidad
+        for (Habitacion h : habitaciones) {
+            if (!habitacionService.estaDisponible(h.getId(), inicio, fin)) {
+                throw new ConflictException(
+                        String.format("La habitación %s no está disponible para las fechas seleccionadas",
+                                h.getNumero()),
+                        "HABITACION_NO_DISPONIBLE"
+                );
+            }
+        }
 
         return habitaciones;
+    }
+
+    // ==================== MÉTODOS PRIVADOS DE CÁLCULO ====================
+
+    private double calcularTotal(List<Habitacion> habitaciones, long noches) {
+        if (noches <= 0) noches = 1;
+        
+        final long nochesFinales = noches;
+        return habitaciones.stream()
+                .mapToDouble(h -> h.getPrecio() * nochesFinales)
+                .sum();
+    }
+
+    private void actualizarHabitacionesReserva(Reserva reserva, ReservaAdminUpdateDTO dto) {
+        // Limpiar detalles anteriores
+        reserva.getDetalles().clear();
+
+        // Calcular noches
+        long noches = ChronoUnit.DAYS.between(dto.fechaInicio(), dto.fechaFin());
+        if (noches <= 0) noches = 1;
+
+        double total = 0;
+
+        for (Long idHab : dto.habitaciones()) {
+            Habitacion h = habitacionService.buscarPorId(idHab);
+
+            DetalleReserva det = new DetalleReserva();
+            det.setReserva(reserva);
+            det.setHabitacion(h);
+            det.setPrecioNoche(h.getPrecio());
+            reserva.getDetalles().add(det);
+
+            total += h.getPrecio() * noches;
+        }
+
+        reserva.setTotal(total);
+    }
+
+    // ==================== ACTUALIZAR FECHAS (PÚBLICO) ====================
+
+    @Transactional
+    public Reserva actualizarFechas(Long id, LocalDate fechaInicio, LocalDate fechaFin) {
+        Reserva reserva = buscarPorId(id);
+
+        // Validar fechas
+        validarFechas(fechaInicio, fechaFin);
+
+        // Recalcular total
+        long noches = ChronoUnit.DAYS.between(fechaInicio, fechaFin);
+        if (noches <= 0) noches = 1;
+
+        final long nochesFinales = noches;
+        double nuevoTotal = reserva.getDetalles().stream()
+                .mapToDouble(d -> d.getPrecioNoche() * nochesFinales)
+                .sum();
+
+        reserva.setFechaInicio(fechaInicio);
+        reserva.setFechaFin(fechaFin);
+        reserva.setTotal(nuevoTotal);
+
+        return reservaRepository.save(reserva);
+    }
+
+    // ==================== CONFIRMAR PAGO ====================
+
+    @Transactional
+    public Reserva confirmarPago(Long id) {
+        Reserva reserva = buscarPorId(id);
+        
+        if (!"PENDIENTE".equals(reserva.getEstado())) {
+            throw new BusinessException(
+                    "Solo se pueden confirmar reservas pendientes. Estado actual: " + reserva.getEstado(),
+                    "ESTADO_INVALIDO"
+            );
+        }
+        
+        reserva.setEstado("CONFIRMADA");
+        return reservaRepository.save(reserva);
+    }
+
+    // ==================== BUSCAR RESERVAS CON FILTROS ====================
+
+    public List<Reserva> buscarReservasPorUsuarioIdYFechas(Long userId, LocalDate fechaInicio, LocalDate fechaFin) {
+        List<Reserva> reservas = reservaRepository.findByUsuarioId(userId);
+        
+        // Filtrar por fechas si se proporcionan
+        if (fechaInicio != null && fechaFin != null) {
+            reservas = reservas.stream()
+                    .filter(r -> !r.getFechaInicio().isBefore(fechaInicio) && !r.getFechaFin().isAfter(fechaFin))
+                    .toList();
+        } else if (fechaInicio != null) {
+            reservas = reservas.stream()
+                    .filter(r -> !r.getFechaInicio().isBefore(fechaInicio))
+                    .toList();
+        } else if (fechaFin != null) {
+            reservas = reservas.stream()
+                    .filter(r -> !r.getFechaFin().isAfter(fechaFin))
+                    .toList();
+        }
+        
+        return reservas;
     }
 }

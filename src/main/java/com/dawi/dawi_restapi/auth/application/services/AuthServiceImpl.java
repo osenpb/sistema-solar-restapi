@@ -9,6 +9,7 @@ import com.dawi.dawi_restapi.auth.domain.services.AuthService;
 import com.dawi.dawi_restapi.auth.domain.services.TokenService;
 import com.dawi.dawi_restapi.auth.infraestructure.dtos.LoginRequest;
 import com.dawi.dawi_restapi.auth.infraestructure.dtos.RegisterRequest;
+import com.dawi.dawi_restapi.helpers.exceptions.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -61,7 +62,7 @@ public class AuthServiceImpl implements AuthService, UserDetailsService {
             throw new DisabledException("Usuario deshabilitado", e);
         } catch (Exception e) {
             log.error("ERROR INESPERADO durante login: {}", e.getMessage(), e);
-            throw new RuntimeException("Error en autenticación generico", e);
+            throw new BadCredentialsException("Error en autenticación", e);
         }
     }
 
@@ -77,7 +78,8 @@ public class AuthServiceImpl implements AuthService, UserDetailsService {
 
     @Override
     public void createUser(RegisterRequest createUserDto) {
-        Role roleClient = roleRepository.findById(2L).orElseThrow();
+        Role roleClient = roleRepository.findById(2L)
+                .orElseThrow(() -> new EntityNotFoundException("Role", 2L));
 
 
         final User createUser = AuthMapper.fromDto(createUserDto);

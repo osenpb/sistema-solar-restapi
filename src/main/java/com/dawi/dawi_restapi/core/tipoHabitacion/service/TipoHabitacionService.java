@@ -2,6 +2,7 @@ package com.dawi.dawi_restapi.core.tipoHabitacion.service;
 
 import com.dawi.dawi_restapi.core.tipoHabitacion.model.TipoHabitacion;
 import com.dawi.dawi_restapi.core.tipoHabitacion.repository.TipoHabitacionRepository;
+import com.dawi.dawi_restapi.helpers.exceptions.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,8 +19,7 @@ public class TipoHabitacionService {
     }
 
     public TipoHabitacion buscarPorId(Long id) {
-        return tipoHabitacionRepository.findById(id).orElseThrow(
-                () -> new RuntimeException("Tipo habitacion no encontrada"));
+        return tipoHabitacionRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("TipoHabitacion", id));
     }
-
 }

@@ -1,5 +1,6 @@
 package com.dawi.dawi_restapi.core.cliente.model;
 
+import com.dawi.dawi_restapi.auth.domain.models.User;
 import com.dawi.dawi_restapi.core.reserva.models.Reserva;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
@@ -34,6 +35,10 @@ public class Cliente {
     private String telefono;
     @Email(message = "Debe ingresar un correo válido")
     private String email;
+
+    @OneToOne
+    @JoinColumn(name = "user_id")
+    private User user;
 
     @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL)
     private List<Reserva> reservas;

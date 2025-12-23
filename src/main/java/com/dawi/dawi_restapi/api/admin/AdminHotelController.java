@@ -1,67 +1,86 @@
 package com.dawi.dawi_restapi.api.admin;
 
-import com.dawi.dawi_restapi.core.habitacion.service.HabitacionService;
-import com.dawi.dawi_restapi.core.hotel.dtos.HotelResponse;
 import com.dawi.dawi_restapi.core.hotel.dtos.HotelRequest;
-import com.dawi.dawi_restapi.core.departamento.service.DepartamentoService;
+import com.dawi.dawi_restapi.core.hotel.dtos.HotelResponse;
+import com.dawi.dawi_restapi.core.hotel.model.Hotel;
 import com.dawi.dawi_restapi.core.hotel.services.HotelService;
+import com.dawi.dawi_restapi.helpers.dtos.MessageResponse;
 import com.dawi.dawi_restapi.helpers.mappers.HotelMapper;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Controller para administración de hoteles.
+ * Solo maneja requests/responses, toda la lógica está en HotelService.
+ */
 @RestController
 @RequestMapping("/api/admin/hoteles")
 @RequiredArgsConstructor
 public class AdminHotelController {
 
     private final HotelService hotelService;
-    private final DepartamentoService departamentoService;
-    private final HabitacionService habitacionService;
 
+    /**
+     * Lista todos los hoteles
+     */
     @GetMapping
     public ResponseEntity<List<HotelResponse>> obtenerTodosLosHoteles() {
         List<HotelResponse> hoteles = hotelService.listarHoteles();
         return ResponseEntity.ok(hoteles);
-
     }
 
-    @GetMapping("departamento/{id}")
+    /**
+     * Lista hoteles por departamento
+     */
+    @GetMapping("/departamento/{id}")
     public ResponseEntity<List<HotelResponse>> listarPorDepartamento(@PathVariable("id") Long depId) {
-        return ResponseEntity.ok(hotelService.listarPorDepartamentoId(depId));
+        List<HotelResponse> hoteles = hotelService.listarPorDepartamentoId(depId);
+        return ResponseEntity.ok(hoteles);
     }
 
+    /**
+     * Obtiene un hotel por ID
+     */
     @GetMapping("/{id}")
     public ResponseEntity<HotelResponse> buscarPorId(@PathVariable Long id) {
-
-        HotelResponse hotelResponse = HotelMapper.toDTO(hotelService.buscarPorId(id));
-
+        HotelResponse hotelResponse = hotelService.buscarPorIdResponse(id);
         return ResponseEntity.ok(hotelResponse);
     }
 
+    /**
+     * Crea un nuevo hotel
+     */
     @PostMapping
-    public ResponseEntity<?> crear(@RequestBody HotelRequest hotel) {
-        return ResponseEntity.ok(hotelService.guardar(hotel));
+    public ResponseEntity<HotelResponse> crear(@RequestBody @Valid HotelRequest hotelRequest) {
+        Hotel hotel = hotelService.guardar(hotelRequest);
+        HotelResponse response = HotelMapper.toDTO(hotel);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-
-    // REVISAR METODO, PROBLEMAS DE LOGICA
+    /**
+     * Actualiza un hotel existente
+     */
     @PutMapping("/{id}")
-    public ResponseEntity<Boolean> actualizar(@PathVariable Long id, @RequestBody HotelRequest hotelRequest) {
-        return ResponseEntity.ok(hotelService.actualizar(id, hotelRequest));
+    public ResponseEntity<HotelResponse> actualizar(
+            @PathVariable Long id,
+            @RequestBody @Valid HotelRequest hotelRequest) {
+
+        Hotel hotel = hotelService.actualizar(id, hotelRequest);
+        HotelResponse response = HotelMapper.toDTO(hotel);
+        return ResponseEntity.ok(response);
     }
 
+    /**
+     * Elimina un hotel
+     */
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> eliminar(@PathVariable Long id) {
+    public ResponseEntity<MessageResponse> eliminar(@PathVariable Long id) {
         hotelService.eliminar(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(MessageResponse.of("Hotel eliminado correctamente"));
     }
-
-    @GetMapping("/por-departamento/{id}")
-    public ResponseEntity<List<HotelResponse>> hotelesPorDepartamento(@PathVariable Long id) {
-        return ResponseEntity.ok(hotelService.listarPorDepartamentoId(id));
-    }
-
 }
