@@ -17,19 +17,6 @@ VALUES (
     NOW()
 );
 
-INSERT IGNORE INTO users (id, username, email, password, role_id, telefono, activo, fecha_creacion)
-VALUES (
-    1,
-    'usuario',
-    'usuario@usuario.com',
-    '$2a$12$69h4r0/I/9P0Ve34F0VlRe3SNJKPrszGBarBte3YAm/yo/T6URy2K',
-    1,
-    '999999999',
-    TRUE,
-    NOW()
-);
-
-
 -- =====================================================
 -- DEPARTAMENTOS
 -- =====================================================

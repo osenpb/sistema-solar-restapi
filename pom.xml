@@ -11,7 +11,7 @@
 	<groupId>com.dawi</groupId>
 	<artifactId>sistema_solar_restapi</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>sistema_solar_restapi</name>
+	<name>sistema_reservas</name>
 	<description>Demo project for Spring Boot</description>
 	<url/>
 	<licenses>
@@ -111,7 +111,7 @@
 					</annotationProcessorPaths>
                     <source>21</source>
                     <target>21</target>
-<!--                    <compilerArgs>&#45;&#45;enable-preview</compilerArgs>-->
+
                 </configuration>
 			</plugin>
 			<plugin>

@@ -27,6 +27,6 @@ application:
   security:
     jwt:
       secret-key: ${JWT_SECRET}
-      expiration: 130
+      expiration: 60
       refresh-expiration: 300
 
